@@ -1,0 +1,1011 @@
+<html lang="en"><head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Budget">
+    
+    <title>Monthly Budget Tracker &amp; Analysis</title>
+    <!-- Graph Library -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --primary: #0284c7;
+            --primary-light: #38bdf8;
+            --bg-color: #f0f9ff;
+            --card-bg: #ffffff;
+            --text-main: #0f172a;
+            --text-muted: #475569;
+            --border: #bae6fd;
+            --success: #0ea5e9;
+            --danger: #f43f5e;
+            --warning-bg: #fef3c7;
+            --warning-border: #fde68a;
+            --warning-text: #92400e;
+        }
+
+        body {
+            background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 50%, #7dd3fc 100%);
+            background-attachment: fixed;
+            color: var(--text-main);
+            padding: 12px;
+            padding-top: max(12px, env(safe-area-inset-top));
+            min-height: 100vh;
+            position: relative;
+            -webkit-text-size-adjust: 100%;
+        }
+
+        body::before {
+            content: "";
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 150px;
+            background: url('data:image/svg+xml;utf8,<svg viewBox="0 0 1200 120" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none"><path d="M0,0 C150,90 350,-40 500,40 C650,120 900,20 1200,60 L1200,120 L0,120 Z" fill="%230284c7" fill-opacity="0.06"/></svg>') repeat-x;
+            background-size: 1200px 150px;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .container {
+            position: relative;
+            z-index: 1;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding-bottom: env(safe-area-inset-bottom);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            background: var(--card-bg);
+            padding: 16px;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        header h1 {
+            font-size: 1.25rem;
+            color: var(--primary);
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            flex-wrap: wrap;
+            width: 100%;
+        }
+
+        .header-actions button {
+            flex: 1;
+            padding: 12px;
+            font-size: 0.85rem;
+        }
+
+        .fx-banner {
+            background: #eff6ff;
+            border: 1px solid #bfdbfe;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            color: #1e40af;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            width: 100%;
+        }
+
+        .reminder-banner {
+            background: var(--warning-bg);
+            border: 1px solid var(--warning-border);
+            color: var(--warning-text);
+            padding: 12px;
+            border-radius: 10px;
+            margin-bottom: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            font-size: 0.85rem;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        }
+
+        .reminder-banner button {
+            background: var(--warning-text);
+            color: white;
+            padding: 10px;
+            font-size: 0.85rem;
+            width: 100%;
+        }
+
+        button {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 12px 16px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.95rem;
+            transition: background 0.2s;
+            touch-action: manipulation;
+        }
+
+        button:active {
+            opacity: 0.8;
+        }
+
+        button.secondary {
+            background: #e2e8f0;
+            color: var(--text-main);
+        }
+
+        button.danger-btn {
+            background: #fee2e2;
+            color: var(--danger);
+            padding: 8px 12px;
+            font-size: 0.8rem;
+            border-radius: 8px;
+        }
+
+        .view-switcher {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        .view-btn {
+            flex: 1;
+            background: rgba(255, 255, 255, 0.7);
+            color: var(--primary);
+            border: 1px solid var(--border);
+            padding: 12px;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 0.85rem;
+            text-align: center;
+        }
+
+        .view-btn.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        .month-selector {
+            display: flex;
+            gap: 8px;
+            overflow-x: auto;
+            padding-bottom: 8px;
+            margin-bottom: 16px;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+        }
+
+        .month-selector::-webkit-scrollbar {
+            display: none;
+        }
+
+        .month-btn {
+            background: var(--card-bg);
+            color: var(--text-muted);
+            border: 1px solid var(--border);
+            padding: 8px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            white-space: nowrap;
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+
+        .month-btn.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+
+        @media(min-width: 900px) {
+            .dashboard-grid {
+                grid-template-columns: 1fr 2fr;
+            }
+        }
+
+        .card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 16px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .card h3 {
+            font-size: 1rem;
+            margin-bottom: 14px;
+            color: var(--primary);
+            border-bottom: 2px solid var(--border);
+            padding-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .form-group {
+            margin-bottom: 14px;
+        }
+
+        label {
+            display: block;
+            font-size: 0.8rem;
+            font-weight: 600;
+            margin-bottom: 6px;
+            color: var(--text-muted);
+        }
+
+        input, select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            font-size: 16px !important; 
+            background: #fff;
+            color: var(--text-main);
+        }
+
+        .currency-row {
+            display: flex;
+            gap: 8px;
+        }
+
+        .currency-row select {
+            width: 100px;
+        }
+
+        .stat-box {
+            background: #f0f9ff;
+            padding: 14px;
+            border-radius: 10px;
+            text-align: center;
+            margin-bottom: 14px;
+            border: 1px solid var(--border);
+        }
+
+        .stat-box span {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .stat-box h2 {
+            font-size: 1.5rem;
+            color: var(--primary);
+            margin-top: 4px;
+        }
+
+        .stat-box p {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        .table-container {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 16px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            white-space: nowrap;
+        }
+
+        th, td {
+            padding: 10px 12px;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.85rem;
+        }
+
+        th {
+            background: #f0fdf4;
+            color: var(--text-muted);
+            font-weight: 600;
+        }
+
+        .amount-col {
+            font-weight: 600;
+            color: var(--primary);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 24px;
+            color: var(--text-muted);
+        }
+
+        .chart-container {
+            position: relative;
+            height: 240px;
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .balance-input {
+            width: 120px;
+            padding: 8px;
+            text-align: right;
+            font-weight: 600;
+            font-size: 16px !important;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div id="exportReminderBanner" class="reminder-banner" style="display: none;">
+        <span>⚠️ <strong>Backup Reminder:</strong> You haven't exported a fresh copy of your budget data in over 7 days. Export an updated version to keep records safe!</span>
+        <button onclick="exportData()">Export Now</button>
+    </div>
+
+    <header>
+        <h1>Monthly Budget Tracker</h1>
+        <div class="header-actions">
+            <div class="fx-banner" id="fxBanner"><span>Live Rate: <strong>Loading...</strong></span></div>
+            <button class="secondary" onclick="exportData()">Export File</button>
+            <button class="secondary" onclick="document.getElementById('importFile').click()">Import</button>
+            <input type="file" id="importFile" style="display:none" onchange="importData(event)">
+        </div>
+    </header>
+
+    <div class="view-switcher">
+        <button class="view-btn active" id="btnTrackerView" onclick="switchView('tracker')">Expense Tracker</button>
+        <button class="view-btn" id="btnBankView" onclick="switchView('bank')">Bank &amp; Charts</button>
+    </div>
+
+    <!-- VIEW 1: EXPENSE TRACKER -->
+    <div id="trackerView" style="display: block;">
+        <div class="month-selector" id="monthSelector"></div>
+
+        <div class="dashboard-grid">
+            <div class="card">
+                <h3>
+                    <span>Log New Charge</span>
+                    <div style="display: flex; gap: 4px;">
+                        <button type="button" class="secondary" style="font-size: 0.7rem; padding: 6px 10px;" onclick="promptAddCategory()">+ Add</button>
+                        <button type="button" class="secondary" style="font-size: 0.7rem; padding: 6px 10px; color: #ef4444;" onclick="promptRemoveCategory()">- Remove</button>
+                    </div>
+                </h3>
+                <form id="expenseForm" onsubmit="addExpense(event)">
+                    <div class="form-group">
+                        <label for="expMonth">Month</label>
+                        <select id="expMonth" required="">
+                            <option value="January">January</option>
+                            <option value="February">February</option>
+                            <option value="March">March</option>
+                            <option value="April">April</option>
+                            <option value="May">May</option>
+                            <option value="June">June</option>
+                            <option value="July">July</option>
+                            <option value="August">August</option>
+                            <option value="September">September</option>
+                            <option value="October">October</option>
+                            <option value="November">November</option>
+                            <option value="December">December</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="expCategory">Category</label>
+                        <select id="expCategory" required=""></select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="expDate">Date</label>
+                        <input type="date" id="expDate" required="">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="expVendor">Description / Vendor (Optional)</label>
+                        <input type="text" id="expVendor" placeholder="e.g. Supermarket">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="expAmount">Amount &amp; Currency</label>
+                        <div class="currency-row">
+                            <input type="number" step="0.01" id="expAmount" placeholder="0.00" required="">
+                            <select id="expCurrency" onchange="previewConversion()">
+                                <option value="EUR" selected="">EUR (€)</option>
+                                <option value="USD">USD ($)</option>
+                            </select>
+                        </div>
+                        <small id="conversionPreview" style="color: var(--text-muted); display: block; margin-top: 6px;"></small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="expNotes">Notes (Optional)</label>
+                        <input type="text" id="expNotes" placeholder="Optional notes">
+                    </div>
+
+                    <button type="submit" style="width: 100%; margin-top: 4px;">Add Transaction</button>
+                </form>
+            </div>
+
+            <div class="card">
+                <h3 id="currentMonthTitle">Overview</h3>
+                <div class="stat-box">
+                    <span>Total Spending (USD)</span>
+                    <h2 id="monthTotalUsd">$0.00 USD</h2>
+                    <p id="monthTotalEur">€0.00 EUR</p>
+                </div>
+                <div class="chart-container" id="categoryChartContainer">
+                    <canvas id="categoryChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="table-container">
+            <h3 id="tableTitle" style="margin-bottom: 12px; color: var(--primary);">Transactions</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Category</th>
+                        <th>Description</th>
+                        <th>Original</th>
+                        <th>USD</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody id="transactionTableBody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- VIEW 2: BANK BALANCES & USD PIE CHARTS -->
+    <div id="bankView" style="display: none;">
+        <div class="card" style="margin-bottom: 16px;">
+            <h3>Monthly Balances &amp; Spending</h3>
+            <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 12px;">
+                Enter starting balance in USD. Tap any month row to view its breakdown chart.
+            </p>
+            <div class="table-container" style="padding: 0; box-shadow: none;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Month</th>
+                            <th>Starting ($)</th>
+                            <th>Spent ($)</th>
+                            <th>Remaining ($)</th>
+                            <th>% Spent</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="bankTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="dashboard-grid">
+            <div class="card">
+                <h3 id="pieChartTitle">Spending Breakdown</h3>
+                <div class="chart-container" id="pieChartContainer" style="height: 260px;">
+                    <canvas id="pieChart"></canvas>
+                </div>
+            </div>
+            <div class="card">
+                <h3>Month Summary</h3>
+                <div id="selectedMonthDetails" style="padding-top: 6px;"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // iOS Safe Storage Handlers
+    function safeGetLocal(key) {
+        try { return localStorage.getItem(key); } 
+        catch (e) { return null; }
+    }
+    function safeSetLocal(key, value) {
+        try { localStorage.setItem(key, value); } 
+        catch (e) { console.warn("Local storage blocked by iOS"); }
+    }
+
+    // EMBEDDED_DATA_START
+    let embeddedData = {
+      "expenses": [],
+      "savedCategories": [],
+      "bankBalances": {},
+      "lastExportDate": null
+    };
+    // EMBEDDED_DATA_END
+
+    const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+    
+    let currentMonth = months[new Date().getMonth()];
+    let selectedPieMonth = months[new Date().getMonth()];
+
+    let myChart = null;
+    let myPieChart = null;
+    let eurToUsdRate = 1.12;
+
+    let initialCategories = ["Housing", "Groceries", "Health", "Entertainment", "Travel", "Supplies", "Utilities", "Transport", "School"];
+    
+    // Safely load data prioritizing Embedded, then LocalStorage, then Defaults
+    let savedCategories = (embeddedData && embeddedData.savedCategories && embeddedData.savedCategories.length > 0) 
+        ? embeddedData.savedCategories 
+        : (JSON.parse(safeGetLocal('budget_all_categories')) || initialCategories);
+        
+    let expenses = (embeddedData && embeddedData.expenses && embeddedData.expenses.length > 0) 
+        ? embeddedData.expenses 
+        : (JSON.parse(safeGetLocal('budget_expenses_usd')) || []);
+        
+    let bankBalances = (embeddedData && embeddedData.bankBalances && Object.keys(embeddedData.bankBalances).length > 0) 
+        ? embeddedData.bankBalances 
+        : (JSON.parse(safeGetLocal('budget_bank_balances')) || {});
+        
+    let lastExportDate = (embeddedData && embeddedData.lastExportDate) 
+        ? embeddedData.lastExportDate 
+        : (safeGetLocal('budget_last_export') || null);
+
+    const categoryColors = ['#f97316', '#06b6d4', '#84cc16', '#e11d48', '#8b5cf6', '#eab308', '#10b981', '#ec4899', '#3b82f6', '#14b8a6', '#f43f5e', '#a855f7'];
+
+    function getCategoryColor(index) {
+        return categoryColors[index % categoryColors.length];
+    }
+
+    document.getElementById('expDate').valueAsDate = new Date();
+
+    function checkExportReminder() {
+        const banner = document.getElementById('exportReminderBanner');
+        if (!lastExportDate) {
+            banner.style.display = 'flex';
+            return;
+        }
+        const daysSinceExport = (new Date() - new Date(lastExportDate)) / (1000 * 60 * 60 * 24);
+        banner.style.display = daysSinceExport > 7 ? 'flex' : 'none';
+    }
+
+    function getAllCategories() { return savedCategories; }
+
+    function switchView(view) {
+        if (view === 'tracker') {
+            document.getElementById('trackerView').style.display = 'block';
+            document.getElementById('bankView').style.display = 'none';
+            document.getElementById('btnTrackerView').classList.add('active');
+            document.getElementById('btnBankView').classList.remove('active');
+        } else {
+            document.getElementById('trackerView').style.display = 'none';
+            document.getElementById('bankView').style.display = 'block';
+            document.getElementById('btnTrackerView').classList.remove('active');
+            document.getElementById('btnBankView').classList.add('active');
+            renderBankTable();
+            renderPieChart();
+        }
+    }
+
+    async function fetchLiveRate() {
+        try {
+            const res = await fetch('https://open.er-api.com/v6/latest/EUR');
+            const data = await res.json();
+            if (data && data.rates && data.rates.USD) {
+                eurToUsdRate = data.rates.USD;
+                document.getElementById('fxBanner').innerHTML = `<span>Live Rate: <strong>1 EUR = ${eurToUsdRate.toFixed(4)} USD</strong></span>`;
+                updateUI();
+                if (document.getElementById('bankView').style.display === 'block') {
+                    renderBankTable();
+                    renderPieChart();
+                }
+                previewConversion();
+            }
+        } catch (err) {
+            document.getElementById('fxBanner').innerHTML = `<span>Using standard rate: <strong>1 EUR = ${eurToUsdRate} USD</strong></span>`;
+        }
+    }
+
+    function previewConversion() {
+        const val = parseFloat(document.getElementById('expAmount').value) || 0;
+        const curr = document.getElementById('expCurrency').value;
+        const preview = document.getElementById('conversionPreview');
+        if (curr === 'EUR') {
+            preview.textContent = `≈ $${(val * eurToUsdRate).toFixed(2)} USD`;
+        } else {
+            preview.textContent = `≈ €${(val / eurToUsdRate).toFixed(2)} EUR`;
+        }
+    }
+
+    document.getElementById('expAmount').addEventListener('input', previewConversion);
+
+    function init() {
+        document.getElementById('expMonth').value = currentMonth;
+        renderMonthSelector();
+        populateCategoryDropdowns();
+        fetchLiveRate();
+        checkExportReminder();
+        updateUI();
+    }
+
+    function renderMonthSelector() {
+        const container = document.getElementById('monthSelector');
+        container.innerHTML = '';
+        months.forEach(m => {
+            const btn = document.createElement('button');
+            btn.className = `month-btn ${m === currentMonth ? 'active' : ''}`;
+            btn.textContent = m;
+            btn.onclick = () => {
+                currentMonth = m;
+                document.getElementById('expMonth').value = m;
+                renderMonthSelector();
+                updateUI();
+            };
+            container.appendChild(btn);
+        });
+    }
+
+    function populateCategoryDropdowns() {
+        const select = document.getElementById('expCategory');
+        const currentVal = select.value;
+        select.innerHTML = '';
+        savedCategories.forEach(cat => {
+            const opt = document.createElement('option');
+            opt.value = cat;
+            opt.textContent = cat;
+            select.appendChild(opt);
+        });
+        if (currentVal && savedCategories.includes(currentVal)) {
+            select.value = currentVal;
+        }
+    }
+
+    function promptAddCategory() {
+        const newCat = prompt("Enter the name of the new category:");
+        if (newCat && newCat.trim() !== "") {
+            const trimmed = newCat.trim();
+            if (savedCategories.map(c => c.toLowerCase()).includes(trimmed.toLowerCase())) {
+                alert("This category already exists!");
+                return;
+            }
+            savedCategories.push(trimmed);
+            safeSetLocal('budget_all_categories', JSON.stringify(savedCategories));
+            populateCategoryDropdowns();
+            updateUI();
+        }
+    }
+
+    function promptRemoveCategory() {
+        if (savedCategories.length === 0) return;
+        const listStr = savedCategories.map((c, i) => `${i + 1}. ${c}`).join("\n");
+        const choice = prompt(`Select a category number to remove:\n\n${listStr}`);
+        if (choice !== null && choice.trim() !== "") {
+            const idx = parseInt(choice) - 1;
+            if (!isNaN(idx) && idx >= 0 && idx < savedCategories.length) {
+                savedCategories.splice(idx, 1);
+                safeSetLocal('budget_all_categories', JSON.stringify(savedCategories));
+                populateCategoryDropdowns();
+                updateUI();
+            }
+        }
+    }
+
+    function addExpense(e) {
+        e.preventDefault();
+        const rawAmount = parseFloat(document.getElementById('expAmount').value);
+        const currency = document.getElementById('expCurrency').value;
+        
+        const newExp = {
+            id: Date.now(),
+            month: document.getElementById('expMonth').value,
+            category: document.getElementById('expCategory').value,
+            date: document.getElementById('expDate').value,
+            vendor: document.getElementById('expVendor').value,
+            rawAmount: rawAmount,
+            currency: currency,
+            amountUSD: currency === 'EUR' ? (rawAmount * eurToUsdRate) : rawAmount,
+            notes: document.getElementById('expNotes').value
+        };
+
+        expenses.push(newExp);
+        saveAndRefresh();
+
+        document.getElementById('expVendor').value = '';
+        document.getElementById('expAmount').value = '';
+        document.getElementById('expNotes').value = '';
+        document.getElementById('expDate').valueAsDate = new Date();
+        document.getElementById('conversionPreview').textContent = '';
+        
+        currentMonth = newExp.month;
+        renderMonthSelector();
+        updateUI();
+    }
+
+    function deleteExpense(id) {
+        expenses = expenses.filter(exp => exp.id !== id);
+        saveAndRefresh();
+    }
+
+    function saveAndRefresh() {
+        safeSetLocal('budget_expenses_usd', JSON.stringify(expenses));
+        updateUI();
+        if (document.getElementById('bankView').style.display === 'block') {
+            renderBankTable();
+            renderPieChart();
+        }
+    }
+
+    function updateUI() {
+        const monthExpenses = expenses.filter(exp => exp.month === currentMonth);
+        
+        document.getElementById('currentMonthTitle').textContent = `${currentMonth} Overview`;
+        document.getElementById('tableTitle').textContent = `Transactions for ${currentMonth}`;
+
+        const totalUSD = monthExpenses.reduce((sum, exp) => sum + exp.amountUSD, 0);
+        const totalEUR = totalUSD / eurToUsdRate;
+
+        document.getElementById('monthTotalUsd').textContent = `$${totalUSD.toFixed(2)} USD`;
+        document.getElementById('monthTotalEur').textContent = `€${totalEUR.toFixed(2)} EUR`;
+
+        const tbody = document.getElementById('transactionTableBody');
+        tbody.innerHTML = '';
+
+        if (monthExpenses.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="6" class="empty-state">No transactions recorded for ${currentMonth}.</td></tr>`;
+        } else {
+            monthExpenses.sort((a, b) => new Date(b.date) - new Date(a.date));
+            monthExpenses.forEach(exp => {
+                const tr = document.createElement('tr');
+                const origDisplay = exp.currency === 'EUR' ? `€${exp.rawAmount.toFixed(2)}` : `$${exp.rawAmount.toFixed(2)}`;
+                tr.innerHTML = `
+                    <td>${exp.date}</td>
+                    <td><span style="background: #e2e8f0; padding: 3px 6px; border-radius: 4px; font-size: 0.75rem;">${exp.category}</span></td>
+                    <td><strong>${exp.vendor || "—"}</strong></td>
+                    <td>${origDisplay}</td>
+                    <td class="amount-col">$${exp.amountUSD.toFixed(2)}</td>
+                    <td><button class="danger-btn" onclick="deleteExpense(${exp.id})">Del</button></td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+        updateChart(monthExpenses);
+    }
+
+    function updateChart(monthExpenses) {
+        const container = document.getElementById('categoryChartContainer');
+        if (typeof Chart === 'undefined') {
+            container.innerHTML = '<div style="color:var(--text-muted);font-size:0.85rem;text-align:center;">Charts require an internet connection to load.</div>';
+            return;
+        }
+
+        const categories = getAllCategories();
+        const categoryTotals = categories.map(cat => {
+            return monthExpenses.filter(e => e.category === cat).reduce((sum, e) => sum + e.amountUSD, 0);
+        });
+
+        if (!document.getElementById('categoryChart')) {
+            container.innerHTML = '<canvas id="categoryChart"></canvas>';
+        }
+        
+        const ctx = document.getElementById('categoryChart').getContext('2d');
+        if (myChart) myChart.destroy();
+
+        myChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: categories.map(c => c.length > 10 ? c.substring(0, 8) + '...' : c),
+                datasets: [{
+                    label: 'Spending ($ USD)',
+                    data: categoryTotals,
+                    backgroundColor: categories.map((_, idx) => getCategoryColor(idx)),
+                    borderRadius: 6
+                }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: { y: { beginAtZero: true }, x: { grid: { display: false } } }
+            }
+        });
+    }
+
+    function updateBankBalance(month, val) {
+        const num = parseFloat(val);
+        if (isNaN(num)) delete bankBalances[month];
+        else bankBalances[month] = num;
+        
+        safeSetLocal('budget_bank_balances', JSON.stringify(bankBalances));
+        renderBankTable();
+    }
+
+    function renderBankTable() {
+        const tbody = document.getElementById('bankTableBody');
+        tbody.innerHTML = '';
+
+        months.forEach(m => {
+            const startBal = bankBalances[m] || 0;
+            const monthExps = expenses.filter(e => e.month === m);
+            const totalSpentUsd = monthExps.reduce((sum, e) => sum + e.amountUSD, 0);
+            const remainingUsd = startBal - totalSpentUsd;
+            const pctSpent = startBal > 0 ? (totalSpentUsd / startBal) * 100 : 0;
+
+            const tr = document.createElement('tr');
+            if (m === selectedPieMonth) tr.style.background = '#e0f2fe';
+            
+            tr.innerHTML = `
+                <td><strong>${m}</strong></td>
+                <td><input type="number" step="0.01" class="balance-input" value="${startBal > 0 ? startBal : ''}" placeholder="0.00" onchange="updateBankBalance('${m}', this.value)" /></td>
+                <td style="font-weight: 600; color: #0284c7;">$${totalSpentUsd.toFixed(2)}</td>
+                <td style="font-weight: 600; color: ${remainingUsd < 0 ? '#f43f5e' : '#059669'};">$${remainingUsd.toFixed(2)}</td>
+                <td style="font-weight: 600;">${pctSpent.toFixed(1)}%</td>
+                <td><button class="secondary" style="font-size: 0.75rem; padding: 6px 10px;" onclick="selectPieMonth('${m}')">View</button></td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    function selectPieMonth(month) {
+        selectedPieMonth = month;
+        renderBankTable();
+        renderPieChart();
+    }
+
+    function renderPieChart() {
+        document.getElementById('pieChartTitle').textContent = `Breakdown (${selectedPieMonth})`;
+        const monthExps = expenses.filter(e => e.month === selectedPieMonth);
+        const startBal = bankBalances[selectedPieMonth] || 0;
+        const totalSpentUsd = monthExps.reduce((a, b) => a + b.amountUSD, 0);
+        const remainingUsd = startBal - totalSpentUsd;
+
+        const detailsEl = document.getElementById('selectedMonthDetails');
+        detailsEl.innerHTML = `
+            <div class="stat-box" style="margin-bottom: 10px;">
+                <span>${selectedPieMonth} Total Spending</span>
+                <h2 style="font-size: 1.3rem; color: #0284c7;">$${totalSpentUsd.toFixed(2)} USD</h2>
+            </div>
+            <div style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.5;">
+                <p><strong>Starting Balance:</strong> $${startBal.toFixed(2)}</p>
+                <p><strong>Spent:</strong> $${totalSpentUsd.toFixed(2)} (${startBal > 0 ? (totalSpentUsd/startBal*100).toFixed(1) : 0}%)</p>
+                <p><strong>Remaining:</strong> <span style="color: ${remainingUsd < 0 ? '#f43f5e' : '#059669'}; font-weight: 600;">$${remainingUsd.toFixed(2)}</span></p>
+            </div>
+        `;
+
+        const container = document.getElementById('pieChartContainer');
+        if (typeof Chart === 'undefined') {
+            container.innerHTML = '<div style="color:var(--text-muted);font-size:0.85rem;text-align:center;">Charts require an internet connection to load.</div>';
+            return;
+        }
+
+        const filteredLabels = [];
+        const filteredData = [];
+        const filteredColors = [];
+
+        getAllCategories().forEach((cat, idx) => {
+            const catTotal = monthExps.filter(e => e.category === cat).reduce((sum, e) => sum + e.amountUSD, 0);
+            if (catTotal > 0) {
+                filteredLabels.push(cat);
+                filteredData.push(catTotal);
+                filteredColors.push(getCategoryColor(idx));
+            }
+        });
+
+        if (filteredData.length === 0) {
+            filteredLabels.push("No Spending");
+            filteredData.push(1);
+            filteredColors.push('#cbd5e1');
+        }
+
+        if (!document.getElementById('pieChart')) {
+            container.innerHTML = '<canvas id="pieChart"></canvas>';
+        }
+
+        const ctx = document.getElementById('pieChart').getContext('2d');
+        if (myPieChart) myPieChart.destroy();
+
+        myPieChart = new Chart(ctx, {
+            type: 'pie',
+            data: {
+                labels: filteredLabels,
+                datasets: [{
+                    data: filteredData,
+                    backgroundColor: filteredColors,
+                    borderWidth: 2, borderColor: '#ffffff'
+                }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 10 } } } }
+            }
+        });
+    }
+
+    function exportData() {
+        lastExportDate = new Date().toISOString();
+        safeSetLocal('budget_last_export', lastExportDate);
+        checkExportReminder();
+
+        const payload = {
+            expenses: expenses,
+            savedCategories: savedCategories,
+            bankBalances: bankBalances,
+            lastExportDate: lastExportDate
+        };
+
+        const htmlContent = document.documentElement.outerHTML;
+        const serializedData = `let embeddedData = ${JSON.stringify(payload, null, 2)};`;
+        const updatedHtml = htmlContent.replace(
+            /\/\/ EMBEDDED_DATA_START[\s\S]*?\/\/ EMBEDDED_DATA_END/,
+            `// EMBEDDED_DATA_START\n    ${serializedData}\n    // EMBEDDED_DATA_END`
+        );
+
+        const blob = new Blob([updatedHtml], { type: 'text/html' });
+        const downloadAnchor = document.createElement('a');
+        downloadAnchor.href = URL.createObjectURL(blob);
+        downloadAnchor.download = "BUDGET.html";
+        document.body.appendChild(downloadAnchor);
+        downloadAnchor.click();
+        downloadAnchor.remove();
+    }
+
+    function importData(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                // Extract embedded data block from the uploaded HTML file
+                const content = e.target.result;
+                const match = content.match(/\/\/ EMBEDDED_DATA_START[\s\S]*?let embeddedData = ([\s\S]*?);\s*\/\/ EMBEDDED_DATA_END/);
+                
+                if (match && match[1]) {
+                    const imported = JSON.parse(match[1]);
+                    expenses = imported.expenses || [];
+                    savedCategories = imported.savedCategories || initialCategories;
+                    bankBalances = imported.bankBalances || {};
+                    lastExportDate = imported.lastExportDate || null;
+                    
+                    safeSetLocal('budget_all_categories', JSON.stringify(savedCategories));
+                    safeSetLocal('budget_bank_balances', JSON.stringify(bankBalances));
+                    if(lastExportDate) safeSetLocal('budget_last_export', lastExportDate);
+                    
+                    saveAndRefresh();
+                    populateCategoryDropdowns();
+                    checkExportReminder();
+                    alert("Data imported successfully! The layout has been updated with your history.");
+                } else {
+                    alert("Could not find budget data in that file.");
+                }
+            } catch (err) {
+                alert("Error reading file.");
+            }
+        };
+        reader.readAsText(file);
+    }
+
+    init();
+</script>
+
+</body></html>
